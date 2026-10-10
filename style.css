@@ -1,0 +1,797 @@
+body {
+    margin: 0;
+    background-color: #0b0709;
+    background-image:
+        radial-gradient(ellipse at 18% 20%, rgba(112, 24, 43, 0.38), transparent 58%),
+        radial-gradient(ellipse at 85% 80%, rgba(87, 15, 34, 0.32), transparent 55%),
+        linear-gradient(145deg, #170b10 0%, #0b0709 52%, #200b13 100%);
+    background-attachment: fixed;
+    color: #fff3f5;
+
+    font-family:
+        "PingFang SC",
+        "Microsoft YaHei",
+        Arial,
+        sans-serif;
+
+    height: 100vh;
+
+    display: flex;
+    flex-direction: column;
+
+    justify-content: center;
+    align-items: center;
+}
+
+h1 {
+    font-size: 60px;
+    margin-bottom: 10px;
+}
+
+p {
+    color: #c6aeb6;
+}
+
+button {
+    margin-top: 30px;
+
+    padding: 15px 40px;
+
+    font-size: 18px;
+
+    background: linear-gradient(135deg, #a62946, #78172f);
+    box-shadow: 0 8px 28px rgba(100, 13, 35, 0.3), inset 0 1px 0 rgba(255, 220, 229, 0.12);
+    transition: filter 160ms ease, box-shadow 160ms ease;
+    color: #fff3f5;
+
+    border: none;
+    border-radius: 8px;
+
+    cursor: pointer;
+}
+
+/* Page visibility and difficulty selection */
+[hidden] {
+    display: none !important;
+}
+
+main {
+    width: 100%;
+    text-align: center;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.difficulty-options {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+button[aria-pressed="true"] {
+    background: #64172c;
+    outline: 2px solid #f2b5c5;
+    outline-offset: 3px;
+}
+
+button:focus-visible {
+    outline: 2px solid #f2b5c5;
+    outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+    h1 { font-size: 44px; }
+}
+
+label { display: block; margin: 24px 0 10px; color: #dbc3ca; }
+select { padding: 12px 18px; border: 1px solid #68404e; border-radius: 8px; background: #211219; color: white; font: inherit; }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+body { min-height: 100vh; height: auto; }
+
+.timer { font-size: 48px; font-variant-numeric: tabular-nums; }
+.task-card { max-width: 480px; margin: 24px auto 0; padding: 20px; background: #211219; border: 1px solid #4d2937; border-radius: 12px; }
+/* 任务卡拖动手柄（顶部小横条）：视觉提示整卡可拖；双击复位 */
+.card-handle {
+    position: absolute;
+    top: 7px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 56px;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.42);
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
+    cursor: grab;
+    touch-action: none;
+    z-index: 3;
+}
+.card-handle:hover { background: rgba(255, 255, 255, 0.6); }
+.card-handle:active { cursor: grabbing; background: rgba(255, 255, 255, 0.7); }
+/* 整卡可拖：卡片 hover 显示抓手提示 */
+#game-task-card, #reward-task-card { cursor: grab; }
+#game-task-card:active, #reward-task-card:active { cursor: grabbing; }
+.task-card p { line-height: 1.5; }
+progress { width: 100%; height: 12px; accent-color: #b43c5b; }
+#session-state { color: #e1cbd2; }
+
+button:not(:disabled):hover { filter: brightness(1.12); }
+select:focus-visible { outline: 2px solid #f2b5c5; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+    button { transition: none; }
+}
+
+/* Focus the game layout on the current task, in every difficulty. */
+#game-page { position: relative; width: 100%; margin: 0; padding: 0; }
+#game-summary {
+    position: fixed;
+    top: max(16px, env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    margin: 0;
+    padding: 6px 16px;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 999px;
+    color: #e8d4db;
+    font-size: 13px;
+    pointer-events: none;
+}
+/* 任务指令浮层：屏幕底部半透明条，不遮挡视频主体 */
+#game-page .task-card {
+    position: fixed;
+    left: 50%;
+    bottom: max(20px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 2;
+    box-sizing: border-box;
+    width: min(92vw, 760px);
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    padding: 14px 26px 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border-radius: 18px;
+    background: rgba(10, 5, 8, 0.62);
+    backdrop-filter: blur(6px);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+#game-page .task-label { margin: 0 0 8px; color: #d8c2ca; font-size: 13px; font-weight: 400; letter-spacing: 0.12em; }
+#task-text { margin: 0; color: #fff3f5; font-size: clamp(20px, 3vw, 30px); line-height: 1.4; font-weight: 600; overflow-wrap: anywhere; text-shadow: 0 2px 12px rgba(0,0,0,.6); }
+#game-page .task-countdown { margin: 10px 0 6px; font-size: 13px; color: #cbb4bc; }
+#game-page progress { width: 100%; height: 8px; }
+#task-timer { font-variant-numeric: tabular-nums; }
+:is(#game-page, #reward-page) .game-back {
+    position: fixed;
+    top: max(16px, env(safe-area-inset-top));
+    left: max(16px, env(safe-area-inset-left));
+    z-index: 10;
+    margin: 0;
+    padding: 0;
+    width: 44px;
+    height: 44px;
+    background: transparent;
+    box-shadow: none;
+    color: #dfc8d0;
+    font-size: 28px;
+    border-radius: 50%;
+}
+:is(#game-page, #reward-page) .game-back:hover { background: rgba(255, 243, 245, 0.08); }
+
+/* Lift the task heading and content without moving the countdown. */
+#game-page .task-label,
+#game-page #task-text {
+    position: static;
+    top: auto;
+}
+
+.ending-preview-controls { margin: 28px auto 0; padding-top: 18px; border-top: 1px solid #4d2937; max-width: 360px; }
+.ending-preview-controls p { font-size: 13px; margin: 0 0 12px; }
+.ending-preview-controls button { margin: 6px; padding: 10px 18px; font-size: 14px; background: transparent; border: 1px solid #68404e; box-shadow: none; }
+
+#reward-page { position: relative; width: 100%; margin: 0; padding: 0; }
+#reward-heading {
+    position: fixed;
+    top: max(64px, env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    width: min(92vw, 720px);
+    margin: 0;
+    padding: 10px 22px;
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(6px);
+    font-size: clamp(20px, 3vw, 28px);
+    line-height: 1.4;
+    text-shadow: 0 2px 14px rgba(0,0,0,.7);
+}
+#reward-page .task-card {
+    position: fixed;
+    left: 50%;
+    bottom: max(20px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 2;
+    max-width: none;
+    width: min(92vw, 720px);
+    min-height: 0;
+    padding: 14px 26px 18px;
+    box-sizing: border-box;
+    border-radius: 18px;
+    background: rgba(10, 18, 13, 0.62);
+    backdrop-filter: blur(6px);
+}
+#reward-page .task-label { font-size: 13px; font-weight: 400; color: #c3e3cf; margin: 0 0 6px; }
+#reward-task { font-size: clamp(22px, 3.4vw, 32px); color: #e2ffed; line-height: 1.4; text-shadow: 0 2px 14px rgba(0,0,0,.7); }
+#reward-page .task-countdown { margin: 10px 0 6px; font-size: 13px; }
+#reward-page progress { height: 8px; }
+/* A steady red cue for the five-second stillness task; no flashing. */
+body.stop-task { background-color: #821d31; background-image: linear-gradient(145deg, #a52a40, #681b2d); }
+body.stop-task .task-card { background: rgba(67, 10, 24, 0.8); border-color: #c2677a; }
+
+/* Age confirmation and restricted-access message */
+#welcome-page, #underage-page { max-width: 700px; margin: 0 auto; padding: 24px 0; }
+#welcome-page h1, #underage-page h1 { margin: 12px 0 28px; font-size: clamp(28px, 5.5vw, 44px); line-height: 1.35; }
+.age-eyebrow { font-size: 14px; letter-spacing: 0.14em; color: #c6aeb6; }
+.age-notice { max-width: 600px; margin: 0 auto; text-align: left; }
+.age-notice p { font-size: 16px; line-height: 1.85; color: #dac5cc; }
+.age-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 14px; margin-top: 30px; }
+.age-actions button { margin: 0; padding: 15px 22px; font-size: 16px; }
+.age-actions .secondary-button { background: transparent; border: 1px solid #79515f; box-shadow: none; color: #dfc8d0; }
+@media (max-width: 480px) { .age-actions { flex-direction: column; } .age-actions button { width: 100%; } }
+
+#ending-heading.failure-heading {
+    white-space: pre-line;
+    font-size: clamp(18px, 4.5vw, 44px);
+    line-height: 1.65;
+    margin: 0 0 24px;
+}
+
+#difficulty-page .feedback-note {
+    margin: 22px auto 0;
+    max-width: 520px;
+    color: rgba(225, 203, 212, 0.62);
+    font-size: 13px;
+    line-height: 1.8;
+}
+.feedback-note a { color: inherit; text-decoration: none; white-space: nowrap; }
+.feedback-note a:hover { color: #f2d4df; text-decoration: underline; }
+.feedback-note a:focus-visible { outline: 2px solid #f2b5c5; outline-offset: 4px; border-radius: 2px; }
+
+#difficulty-heading { font-size: clamp(28px, 5vw, 36px); line-height: 1.4; }
+#settings-heading { font-size: clamp(26px, 5vw, 34px); line-height: 1.4; }
+/* 难度页的「设置」入口 + 设置页顶部导航按钮：次级样式，不与「开始」抢视觉 */
+#settings-open-button,
+#settings-back-button {
+    padding: 10px 22px;
+    font-size: 15px;
+    background: rgba(255, 243, 245, 0.08);
+    box-shadow: none;
+    color: #e6d0d8;
+    border: 1px solid #6b4251;
+}
+#settings-open-button { margin-top: 8px; }
+#settings-open-button:hover,
+#settings-back-button:hover {
+    background: rgba(255, 243, 245, 0.14);
+    color: #fff3f5;
+}
+#settings-back-button { margin-top: 6px; }
+
+/* Green atmosphere only while the reward progress page is visible. */
+body:has(#reward-page:not([hidden])) {
+    background-color: #070c0a;
+    background-image:
+        radial-gradient(ellipse at 18% 18%, rgba(133, 211, 171, 0.19), transparent 57%),
+        radial-gradient(ellipse at 85% 78%, rgba(79, 151, 115, 0.15), transparent 55%),
+        linear-gradient(145deg, #101e17 0%, #070c0a 52%, #102219 100%);
+    color: #edfff4;
+}
+#reward-page #reward-heading, #reward-page #reward-task {
+    color: #e2ffed;
+    text-shadow: 0 0 32px rgba(146, 225, 180, 0.15);
+}
+#reward-page p, #reward-page .task-label { color: #b3cdbd; }
+#reward-page .task-card {
+    background: rgba(14, 28, 20, 0.88);
+    border-color: #385644;
+    box-shadow: 0 18px 70px rgba(0, 0, 0, 0.28), 0 0 35px rgba(115, 193, 148, 0.06);
+}
+#reward-page progress { accent-color: #a4dfb9; }
+#reward-page .game-back { color: #c3e3cf; }
+#reward-page button:focus-visible { outline-color: #c5f1d5; }
+
+/* ===== 本地增强版：媒体激励样式 ===== */
+[hidden] { display: none !important; }
+.reward-media {
+    position: relative;
+    width: 100%;
+    max-width: 520px;
+    margin: 12px auto 6px;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 24px rgba(0, 0, 0, .45);
+}
+.reward-media img,
+.reward-media video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+/* 奖励图片淡入（与背景素材一致；JS 控制 revealed class） */
+.reward-media img {
+    opacity: 0;
+    transition: opacity 0.35s ease;
+}
+.reward-media img.revealed { opacity: 1; }
+.sound-btn {
+    position: static;
+    margin: 0;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .55);
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
+}
+/* 奖励右下角工具行：音量滑杆 + 开声音按钮 */
+.reward-vol-row {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+/* 奖励页右上角播放速度按钮 */
+.reward-speed-btn {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    z-index: 2;
+    min-width: 52px;
+    padding: 7px 12px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.45);
+    color: #e8d4db;
+    font-size: 13px;
+    cursor: pointer;
+}
+.reward-speed-btn:hover { background: rgba(0, 0, 0, 0.65); }
+/* 音量滑杆（训练右上 / 奖励右下通用） */
+.vol-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+    height: 5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.28);
+    cursor: pointer;
+}
+.vol-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #e8d4db;
+    border: none;
+    transition: transform 0.15s ease;
+}
+.vol-slider:hover::-webkit-slider-thumb,
+.vol-slider:focus-visible::-webkit-slider-thumb { transform: scale(1.25); }
+.vol-slider:focus-visible { outline: 2px solid #f2b5c5; outline-offset: 3px; }
+.vol-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #e8d4db;
+    border: none;
+}
+/* 训练右上角：滑杆套胶囊背景，与圆形按钮风格统一 */
+.game-controls .vol-slider {
+    width: 76px;
+    height: 44px;
+    padding: 0 10px;
+    box-sizing: content-box;
+    background: rgba(0, 0, 0, 0.35);
+    background-clip: content-box;
+}
+/* 奖励右下角：滑杆胶囊化 */
+.reward-vol-row .vol-slider {
+    width: 80px;
+    padding: 10px 10px;
+    background: rgba(0, 0, 0, 0.45);
+    background-clip: content-box;
+    box-sizing: content-box;
+}
+.media-status {
+    margin: 12px 0 0;
+    font-size: 13px;
+    opacity: .7;
+}
+#media-picker-row { margin-top: 8px; }
+#media-picker-button {
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    background: transparent;
+    cursor: pointer;
+    font-size: 14px;
+}
+#media-picker-button:hover { opacity: .8; }
+
+/* ===== 任务背景媒体轮播 ===== */
+.game-media {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.game-media img,
+.game-media video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    opacity: 0;
+    transition: opacity 0.45s ease;
+}
+/* 画面填充：cover = 铺满屏幕（裁切） */
+body.fit-cover .game-media img,
+body.fit-cover .game-media video,
+body.fit-cover .reward-media img,
+body.fit-cover .reward-media video {
+    object-fit: cover;
+}
+/* 训练界面右上角控制（静音 / 暂停） */
+.game-controls {
+    position: fixed;
+    top: max(16px, env(safe-area-inset-top));
+    right: max(16px, env(safe-area-inset-right));
+    z-index: 10;
+    display: flex;
+    gap: 8px;
+}
+.game-controls button {
+    margin: 0;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.35);
+    box-shadow: none;
+    color: #dfc8d0;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+.game-controls button:hover { background: rgba(0, 0, 0, 0.55); }
+.pause-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(3px);
+    color: #fff3f5;
+    font-size: clamp(22px, 5vw, 34px);
+    letter-spacing: 0.14em;
+}
+.reward-skip-btn {
+    position: absolute;
+    left: 8px;
+    bottom: 10px;
+    z-index: 2;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
+}
+.reward-skip-btn:hover { background: rgba(0, 0, 0, 0.72); }
+.ending-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.ending-stats {
+    margin: 14px auto 0;
+    font-size: 14px;
+    color: #b99aa6;
+    white-space: pre-line;
+    text-align: center;
+}
+/* 结束页清零累计统计：低调的文字按钮 */
+.link-danger {
+    display: block;
+    margin: 16px auto 0;
+    padding: 4px 10px;
+    background: none;
+    border: none;
+    color: #8a6b76;
+    font-size: 12px;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.link-danger:hover { color: #d98a9c; }
+.link-danger:disabled { text-decoration: none; cursor: default; }
+.ending-actions .secondary-button {
+    margin: 0;
+    background: transparent;
+    border: 1px solid #79515f;
+    box-shadow: none;
+    color: #e6d0d8;
+}
+.ending-actions button { margin: 0; }
+#game-page { position: relative; }
+/* 历史遗留：曾把 #game-summary 的 fixed 覆盖成 relative（顶部胶囊掉到页面中部）。
+   现只对 .task-card 生效（其 fixed 由更具体的 #game-page .task-card 提供）。 */
+.task-card {
+    position: relative;
+    z-index: 1;
+}
+
+/* ===== 自定义设置区 ===== */
+.settings-hr {
+    margin: 28px auto 18px;
+    width: min(80%, 560px);
+    border: 0;
+    border-top: 1px solid #3d202c;
+}
+.custom-section {
+    max-width: 640px;
+    margin: 0 auto;
+    text-align: left;
+}
+.custom-title {
+    font-size: 18px;
+    margin: 0 0 8px;
+    color: #f0dbe2;
+}
+.custom-hint {
+    font-size: 13px;
+    color: #a98d97;
+    margin: 0 0 12px;
+    line-height: 1.6;
+}
+.custom-hint code {
+    background: rgba(255,255,255,.08);
+    padding: 1px 6px;
+    border-radius: 5px;
+    font-size: 12px;
+    color: #f2b5c5;
+}
+.timing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px 18px;
+    margin: 4px 0 0;
+}
+.timing-grid label {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 14px;
+    color: #dbc3ca;
+}
+.timing-grid input[type="number"],
+.timing-grid select {
+    padding: 8px 10px;
+    border: 1px solid #68404e;
+    border-radius: 8px;
+    background: #1c1016;
+    color: #fff3f5;
+    font: inherit;
+}
+.timing-grid .check-label {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+.timing-grid .check-label input { width: 18px; height: 18px; }
+#custom-tasks-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    border: 1px solid #68404e;
+    border-radius: 10px;
+    background: #1c1016;
+    color: #fff3f5;
+    font: inherit;
+    font-size: 14px;
+    line-height: 1.7;
+    resize: vertical;
+    min-height: 150px;
+}
+#custom-tasks-input:focus-visible {
+    outline: 2px solid #f2b5c5;
+    outline-offset: 2px;
+}
+.custom-actions {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.custom-actions .secondary-button {
+    margin: 0;
+    padding: 8px 18px;
+    font-size: 14px;
+    background: transparent;
+    border: 1px solid #79515f;
+    box-shadow: none;
+    color: #e6d0d8;
+}
+.custom-actions .secondary-button:hover {
+    background: rgba(255,255,255,.06);
+}
+.save-status {
+    font-size: 13px;
+    color: #a9e0bd;
+}
+#media-picker-row { margin-top: 10px; }
+#media-picker-button {
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid #79515f;
+    background: transparent;
+    color: #e6d0d8;
+    cursor: pointer;
+    font-size: 14px;
+}
+#media-picker-button:hover { background: rgba(255,255,255,.06); }
+
+/* ---------- 年龄确认门（首次访问） ---------- */
+.age-gate {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: #000;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.age-gate[hidden] { display: none; }
+.age-gate-box {
+    max-width: 480px;
+    margin: 24px;
+    padding: 36px 28px;
+    text-align: center;
+    background: #141414;
+    border: 1px solid #333;
+    border-radius: 16px;
+    box-shadow: 0 8px 40px rgba(0,0,0,.6);
+}
+.age-gate-box h1 { font-size: 22px; margin: 0 0 14px; color: #ff6b6b; }
+.age-gate-box p { font-size: 15px; line-height: 1.7; color: #ddd; margin: 8px 0; }
+.age-gate-box b { color: #fff; }
+.age-gate-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 24px;
+    flex-wrap: wrap;
+}
+.age-gate-actions button {
+    padding: 12px 22px;
+    font-size: 15px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+#age-enter {
+    background: #e5484d;
+    color: #fff;
+}
+#age-enter:hover { background: #c93a3f; }
+#age-leave {
+    background: transparent;
+    color: #999;
+    border: 1px solid #444;
+}
+#age-leave:hover { background: rgba(255,255,255,.06); color: #fff; }
+
+/* ---------- 视频播放进度条（覆盖在视频底部；可拖动 seek） ---------- */
+.video-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 19px;
+    padding: 7px 0;
+    box-sizing: border-box;
+    border: none;
+    background: transparent;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    touch-action: none;
+}
+.video-progress::-webkit-progress-bar {
+    background: rgba(255,255,255,.18);
+}
+.video-progress::-webkit-progress-value {
+    background: #ff6b6b;
+}
+.video-progress::-moz-progress-bar {
+    background: #ff6b6b;
+}
+
+/* ---------- 全屏沉浸：鼠标不动后隐藏周边按钮/进度，动一下即恢复 ---------- */
+#game-summary,
+.game-controls button,
+.game-controls .vol-slider,
+:is(#game-page, #reward-page) .game-back,
+.task-countdown,
+#task-progress,
+.reward-skip-btn,
+.sound-btn,
+.video-progress,
+#reward-progress,
+#reward-counter,
+.reward-speed-btn,
+.reward-vol-row,
+.pause-overlay {
+    transition: opacity 0.4s ease;
+}
+body.ui-idle #game-summary,
+body.ui-idle .game-controls button,
+body.ui-idle .game-controls .vol-slider,
+body.ui-idle :is(#game-page, #reward-page) .game-back,
+body.ui-idle .task-countdown,
+body.ui-idle .reward-skip-btn,
+body.ui-idle .sound-btn,
+body.ui-idle .video-progress,
+body.ui-idle #reward-counter,
+body.ui-idle .reward-speed-btn,
+body.ui-idle .reward-vol-row,
+body.ui-idle .pause-overlay {
+    opacity: 0;
+    pointer-events: none;
+}
+/* 任务文字与核心内容始终可见，只藏周边控件 */
+body.ui-idle #task-text,
+body.ui-idle #reward-task,
+body.ui-idle .task-label { opacity: 1; }
+
+/* 奖励连播计数器：卡片顶部居中（底部与音量滑杆/换一个按钮会重叠） */
+.reward-counter {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 10px;
+    margin: 0;
+    font-size: 13px;
+    color: rgba(230, 208, 216, 0.9);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+    z-index: 3;
+    background: rgba(20, 8, 12, 0.5);
+    padding: 5px 14px;
+    border-radius: 999px;
+    white-space: nowrap;
+}

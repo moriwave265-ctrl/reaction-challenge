@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>反应挑战</title>
+    <link rel="stylesheet" href="style.css?v=local-v11">
+    <script src="script.js?v=local-v18" defer></script>
+</head>
+<body>
+    <!-- 年龄确认门：首次访问显示一次，确认后 localStorage 记录不再显示 -->
+    <div id="age-gate" class="age-gate" hidden>
+        <div class="age-gate-box">
+            <h1>⚠️ 成人内容警示</h1>
+            <p>本程序包含成人向内容与素材，<b>仅限 18 周岁及以上</b>用户使用。</p>
+            <p>本程序仅用于一般放松、注意力与反应练习及娱乐体验，<b>不构成医疗建议、诊断或治疗</b>，也不保证任何健康或训练效果。请根据自身情况决定是否参与；如感到不适，请立即停止。</p>
+            <p>进入即表示你已年满 18 周岁，且当地法律允许访问此类内容。</p>
+            <div class="age-gate-actions">
+                <button id="age-enter" type="button">我已满 18 周岁，进入</button>
+                <button id="age-leave" type="button" class="secondary-button">未满 18 周岁，离开</button>
+            </div>
+        </div>
+    </div>
+    <main>
+        <!-- 全屏背景媒体层：训练与奖励阶段共用 -->
+        <div id="game-media" class="game-media" hidden>
+            <img id="game-img" alt="" hidden>
+            <video id="game-video" playsinline hidden></video>
+            <video id="game-video-2" playsinline hidden></video>
+            <progress id="bg-video-progress" class="video-progress" max="100" value="0" aria-label="视频播放进度（可拖动）"></progress>
+        </div>
+        <section id="difficulty-page">
+            <h1 id="difficulty-heading" tabindex="-1">难度选择</h1>
+            <div class="difficulty-options" role="group" aria-label="难度">
+                <button type="button" data-difficulty="Easy" aria-pressed="false">简单</button>
+                <button type="button" data-difficulty="Normal" aria-pressed="false">普通</button>
+                <button type="button" data-difficulty="Hard" aria-pressed="false">困难</button>
+            </div>
+            <p id="difficulty-status" aria-live="polite">尚未选择难度</p>
+            <label for="duration-select">预计时长</label>
+            <select id="duration-select">
+                <option value="">请选择时长</option>
+                <option value="5">5 分钟</option>
+                <option value="10">10 分钟</option>
+                <option value="15">15 分钟</option>
+                <option value="20">20 分钟</option>
+            </select>
+            <div><button id="start-button" type="button" disabled>开始</button></div>
+            <p id="play-summary" class="media-status" aria-live="polite"></p>
+            <button id="settings-open-button" type="button">⚙️ 玩法设置</button>
+            <p id="media-status" class="media-status" aria-live="polite"></p>
+        </section>
+        <section id="settings-page" hidden>
+            <h1 id="settings-heading" tabindex="-1">设置</h1>
+            <button id="settings-back-button" type="button">← 返回难度选择</button>
+            <div id="media-picker-row" hidden>
+                <button id="media-picker-button" type="button">📁 选择本地图片/视频文件夹（激励素材）</button>
+            </div>
+            <input type="file" id="media-file-input" webkitdirectory multiple hidden>
+            <hr class="settings-hr">
+            <div class="custom-section">
+                <h2 class="custom-title">媒体时长设置</h2>
+                <p class="custom-hint">背景轮播：训练期间全屏轮播的素材。<b>视频最大时长填 0 = 不限制</b>（视频自然播完才切换）。</p>
+                <div class="timing-grid">
+                    <label>背景图片切换(秒)
+                        <input type="number" id="bg-img-seconds" min="1" max="600" value="10">
+                    </label>
+                    <label>背景视频最大(分钟)
+                        <input type="number" id="bg-video-minutes" min="0" max="60" value="0">
+                    </label>
+                    <label>奖励视频最大(分钟)
+                        <input type="number" id="reward-video-minutes" min="0" max="60" value="5">
+                    </label>
+                </div>
+                <div class="custom-actions">
+                    <button id="save-timing-button" class="secondary-button" type="button">保存时长设置</button>
+                    <span id="timing-save-status" class="save-status" aria-live="polite"></span>
+                </div>
+            </div>
+            <hr class="settings-hr">
+            <div class="custom-section">
+                <h2 class="custom-title">玩法设置</h2>
+                <p class="custom-hint">成功概率越高越容易进入奖励阶段；任务时长为每条指令的随机秒数范围。背景视频默认有声，可在训练界面右上角或此处静音。</p>
+                <div class="timing-grid">
+                    <label>成功概率(%)
+                        <input type="number" id="success-chance-pct" min="0" max="100" value="70">
+                    </label>
+                    <label>奖励图片时长(秒)
+                        <input type="number" id="reward-image-seconds" min="1" max="600" value="10">
+                    </label>
+                    <label>奖励连播(个)
+                        <select id="reward-chain-select">
+                            <option value="1">1（不连播）</option>
+                            <option value="3">3</option>
+                            <option value="5">5</option>
+                        </select>
+                    </label>
+                    <label>任务时长最小(秒)
+                        <input type="number" id="task-min-seconds" min="3" max="120" value="5">
+                    </label>
+                    <label>任务时长最大(秒)
+                        <input type="number" id="task-max-seconds" min="3" max="300" value="15">
+                    </label>
+                    <label>画面填充
+                        <select id="fit-mode">
+                            <option value="contain">完整显示(留黑边)</option>
+                            <option value="cover">铺满屏幕(裁切)</option>
+                        </select>
+                    </label>
+                    <label class="check-label">
+                        <input type="checkbox" id="bg-muted"> 背景视频静音
+                    </label>
+                    <label class="check-label">
+                        <input type="checkbox" id="reward-start-random"> 奖励视频随机起点
+                    </label>
+                </div>
+                <div class="custom-actions">
+                    <button id="save-play-button" class="secondary-button" type="button">保存玩法设置</button>
+                    <span id="play-save-status" class="save-status" aria-live="polite"></span>
+                </div>
+            </div>
+            <hr class="settings-hr">
+            <div class="custom-section">
+                <h2 class="custom-title">自定义指令</h2>
+                <p class="custom-hint">每行一条。<b>[E]/[N]/[H]</b>=难度，<b>[W]/[B]/[X]</b>=阶段，不写=全部。<b>!</b>开头=红屏，<b>@秒数</b>结尾=时长。<b>{a:b}</b>=随机数字(快 {10:30} 下)，<b>{a|b}</b>=随机选一({双手|单手})。如 <code>[H][X] 大声说出来</code>、<code>!立刻停手 @5</code>、<code>快 {10:30} 下</code></p>
+                <textarea id="custom-tasks-input" rows="6" spellcheck="false"></textarea>
+                <div class="custom-actions">
+                    <button id="save-tasks-button" class="secondary-button" type="button">保存指令</button>
+                    <button id="reset-tasks-button" class="secondary-button" type="button">恢复默认</button>
+                    <span id="tasks-save-status" class="save-status" aria-live="polite"></span>
+                </div>
+            </div>
+            <hr class="settings-hr">
+            <div class="custom-section">
+                <h2 class="custom-title">快捷键</h2>
+                <p class="custom-hint">训练或奖励进行中：<b>空格</b> = 暂停/继续 · <b>N</b> = 换奖励素材 · <b>M</b> = 背景声音开关 · <b>←/→</b> = 视频快退/快进 10 秒 · <b>↑/↓</b> = 音量调节。输入框聚焦时不生效。</p>
+            </div>
+            <p class="feedback-note">如有意见或建议，欢迎通过 X 联系 <a href="https://x.com/moriwave5mx" target="_blank" rel="noopener noreferrer">@moriwave5mx</a></p>
+        </section>
+        <section id="game-page" hidden>
+            <button id="settings-button" class="game-back" type="button" aria-label="返回设置" title="返回设置">←</button>
+            <div class="game-controls">
+                <input type="range" id="bg-volume" class="vol-slider" min="0" max="100" value="70" aria-label="背景音量" title="背景音量">
+                <button id="mute-button" type="button" aria-label="背景声音开关" title="背景声音开关">🔇</button>
+                <button id="pause-button" type="button" aria-label="暂停/继续" title="暂停/继续">⏸</button>
+            </div>
+            <div id="pause-overlay" class="pause-overlay" hidden>已暂停</div>
+            <p id="game-summary"></p>
+            <article class="task-card" id="game-task-card">
+                <p class="task-label">当前任务</p>
+                <h2 id="task-text" tabindex="-1" aria-live="polite"></h2>
+                <p class="task-countdown">任务结束倒计时</p>
+                <progress id="task-progress" max="100" value="0" aria-label="当前任务进度"></progress>
+            </article>
+        </section>
+        <section id="reward-page" hidden>
+            <button id="reward-back-button" class="game-back" type="button" aria-label="返回设置" title="返回设置">←</button>
+            <div id="reward-media" class="reward-media" hidden>
+                <img id="reward-img" alt="" hidden>
+                <video id="reward-video" playsinline loop hidden></video>
+                <video id="reward-prefetch" preload="auto" hidden></video>
+                <img id="reward-prefetch-img" alt="" hidden>
+                <progress id="reward-video-progress" class="video-progress" max="100" value="0" aria-label="视频播放进度（可拖动）"></progress>
+                <p id="reward-counter" class="reward-counter"></p>
+                <button id="reward-speed-button" class="reward-speed-btn" type="button" hidden title="播放速度">1x</button>
+                <button id="reward-skip-button" class="reward-skip-btn" type="button" title="换一个素材">⏭ 换一个</button>
+                <div class="reward-vol-row">
+                    <input type="range" id="reward-volume" class="vol-slider" min="0" max="100" value="90" aria-label="奖励音量" title="奖励音量">
+                    <button id="reward-sound-btn" class="sound-btn" type="button" hidden>🔊 开启声音</button>
+                </div>
+            </div>
+            <h1 id="reward-heading" tabindex="-1">恭喜你获得了奖励挑战的机会</h1>
+            <article class="task-card" id="reward-task-card">
+                <p class="task-label">奖励任务</p>
+                <h2 id="reward-task">请你在时间内完成</h2>
+                <p class="task-countdown">任务结束倒计时</p>
+                <progress id="reward-progress" max="100" value="0" aria-label="奖励任务进度"></progress>
+            </article>
+        </section>
+        <section id="ending-page" hidden>
+            <h1 id="ending-heading" tabindex="-1">挑战完成</h1>
+            <p id="ending-summary"></p>
+            <p id="ending-stats" class="ending-stats"></p>
+            <div class="ending-actions">
+                <button id="replay-button" type="button">再来一轮（同难度）</button>
+                <button id="restart-button" class="secondary-button" type="button">返回设置</button>
+            </div>
+            <button id="stats-reset-button" class="link-danger" type="button" hidden>清零累计统计</button>
+        </section>
+    </main>
+</body>
+</html>
